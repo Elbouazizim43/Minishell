@@ -12,7 +12,7 @@
 
 #ifndef MINISHELL_H
 #define MINISHELL_H
-
+#include<fcntl.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>

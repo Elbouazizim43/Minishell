@@ -10,7 +10,9 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "libft/libft.h"
 #include "minishell.h"
+#include <stdio.h>
 
 #define GREEN "\001\033[0;32m\002"
 #define RESET "\001\033[0m\002"
@@ -94,6 +96,69 @@ void print_commands(t_command *cmd)
     }
 }
 
+char *find_path(char *cmd, char *path)
+{
+    char **spath = ft_split(path, ':');
+
+
+    int i = 0;
+    while (spath[i])
+    {
+        char *tcmd = ft_strjoin(spath[i], "/");
+        tcmd = ft_strjoin(tcmd, cmd);
+        if (access(tcmd, F_OK) != -1)
+        {
+            return tcmd;
+        }
+        i++;
+    }
+
+    return NULL;
+}
+void set_input (t_redir *redirs)
+{
+   int fd = open(redirs->filename , O_RDONLY );
+    if (fd < 0 )
+    {
+        perror("failed");
+        return;
+    }
+    if (dup2(fd , STDIN_FILENO) < 0)
+        perror("failed");
+    close (fd);
+}
+
+void set_redir(t_redir *redirs)
+{   
+    while(redirs)
+    {
+        if (redirs->type == REDIR_INPUT)
+            set_input(redirs);
+            
+        redirs = redirs->next; 
+        
+    }
+
+}
+void exec_cmds(t_command *cmds, char **env)
+{
+    // TODO  : handel fork if it faild
+    int pid = fork();
+
+    if (pid  == 0) {
+
+        char *path = getenv("PATH");
+        char *cmd = find_path(cmds->args[0], path);
+        set_redir(cmds->redirs);
+        execve(cmd, cmds->args, env);
+        exit(1);
+    }
+    else {
+        wait(NULL);
+    }
+
+}
+
 int main(int ac, char **av, char **env)
 {
     char *line;
@@ -134,7 +199,7 @@ int main(int ac, char **av, char **env)
             continue;
         }
 
-        print_tokens(tokens);
+        /* print_tokens(tokens); */
 
         commands = parse_tokens(&tokens);
         if (!commands)
@@ -145,7 +210,8 @@ int main(int ac, char **av, char **env)
             continue; 
         }
 
-        print_commands(commands);
+        exec_cmds(commands, env);
+        /* print_commands(commands); */
         free_commands(commands);
         free_token_list(&tokens); 
         free(line);
